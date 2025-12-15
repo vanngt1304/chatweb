@@ -3,8 +3,6 @@ name: Production Deploy
 on:
   push:
     branches: [ "main" ]
-env:
-  IMAGE_NAME: ghcr.io/${{ github.repository }}
 permissions:
   contents: read
   packages: write
@@ -34,7 +32,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: vanngt2004/chatweb:latest
+          tags: ghcr.io/vanngt2004/chatweb:latest
 
       # 4. SSH vào VPS để triển khai (Deploy)
       - name: Deploy to VPS via SSH
@@ -45,7 +43,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             # Tải image mới nhất về
-            sudo docker pull vanngt2004/chatweb:latest
+            sudo docker pull ghcr.io/vanngt2004/chatweb:latest
             
             # Dừng và xóa container cũ (nếu đang chạy)
             # "|| true" giúp lệnh không bị lỗi nếu đây là lần chạy đầu tiên
@@ -55,4 +53,4 @@ jobs:
               -p 3000:3000 \
               --name chatweb \
               --restart always \
-              vanngt2004/chatweb:latest
+              ghcr.io/vanngt2004/chatweb:latest
