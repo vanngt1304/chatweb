@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Chat Realtime Demo</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+  <style>
+    body { 
+      font-family: Arial; 
+      display: flex; 
+      gap: 20px; 
+      padding: 20px; 
+    }
+
+    #chat-box {
+      width: 70%; 
+      background: #f2f2f2; 
+      padding: 20px;
+      border-radius: 10px; 
+      height: 500px; 
+      overflow-y: auto;
+    }
+
+    #online {
+      width: 25%; 
+      background: #fffbe8; 
+      padding: 20px;
+      border-radius: 10px; 
+      height: 500px; 
+      overflow-y: auto;
+    }
+
+    #msg {
+      width: 80%; 
+      padding: 10px; 
+      margin-top: 10px; 
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    #send {
+      padding: 10px 20px; 
+      border: none; 
+      background: #007bff;
+      color: white; 
+      border-radius: 5px;
+    }
+
+    /* --- KHUNG TIN NHẮN ĐẸP --- */
+
+    .message-box {
+      background: white;
+      padding: 10px 15px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      width: fit-content;
+      max-width: 70%;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .message-me {
+      background: #d1e7ff; 
+      margin-left: auto;
+    }
+
+    .message-username {
+      font-weight: bold;
+      color: #555;
+      margin-bottom: 5px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 3px;
+      font-size: 14px;
+    }
+
+    .message-text {
+      font-size: 15px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div style="width: 70%">
+      <div id="chat-box"></div>
+
+      <!-- Ô nhập tin nhắn -->
+      <input type="text" id="msg" placeholder="Nhập tin nhắn...">
+  </div>
+
+  <div id="online">
+    <h3>Đang online:</h3>
+    <ul id="user-list"></ul>
+  </div>
+
+<script>
+const protocol = window.location.protocol;
+const host = window.location.host;
+const socketUrl = `${protocol}//${host}`;
+const socket = io(socketUrl);
+
+const username = prompt("Nhập tên của bạn:");
+socket.emit("setUsername", username);
+
+// --- Khi nhận tin nhắn từ server ---
+socket.on("chatMessage", (data) => {
+  const box = document.getElementById("chat-box");
+
+  const div = document.createElement("div");
+  div.classList.add("message-box");
+
+  if (data.username === username) {
+    div.classList.add("message-me");
+  }
+
+  div.innerHTML = `
+    <div class="message-username">${data.username}</div>
+    <div class="message-text">${data.message}</div>
+  `;
+
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+});
+
+// --- Tin nhắn hệ thống ---
+socket.on("serverMessage", (msg) => {
+  const box = document.getElementById("chat-box");
+  box.innerHTML += `<p style="color: gray;"><i>${msg}</i></p>`;
+  box.scrollTop = box.scrollHeight;
+});
+
+// --- Cập nhật danh sách online ---
+socket.on("onlineUsers", (users) => {
+  const ul = document.getElementById("user-list");
+  ul.innerHTML = "";
+  users.forEach(u => {
+    ul.innerHTML += `<li>${u}</li>`;
+  });
+});
+
+// --- Gửi tin nhắn khi Enter ---
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter") {
+    const msg = document.getElementById("msg").value;
+    if (msg.trim().length > 0) {
+      socket.emit("chatMessage", msg);
+    }
+    document.getElementById("msg").value = "";
+  }
+});
+
+</script>
+
+</body>
+</html>
