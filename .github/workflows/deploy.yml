@@ -7,7 +7,6 @@ on:
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository }}
 
-# --- QUAN TRỌNG: Cấp quyền ghi gói tin (Fix lỗi permission denied) ---
 permissions:
   contents: read
   packages: write
@@ -15,17 +14,16 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Xử lý tên image về chữ thường (tránh lỗi nếu user GitHub có chữ hoa)
+      # Xử lý tên image về chữ thường
       - name: Lowercase Image Name
         run: |
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >> ${GITHUB_ENV}
 
-      # 1. Đăng nhập GitHub Container Registry
+      # 1. Đăng nhập GitHub Container Registry (Trên máy Runner để push)
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
@@ -48,16 +46,23 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
+          # --- PHẦN THÊM MỚI 1: Khai báo các biến cần truyền vào server ---
+          envs: GITHUB_ACTOR, GITHUB_TOKEN, IMAGE_NAME 
           script: |
+            # --- PHẦN THÊM MỚI 2: Đăng nhập Docker trên Server ---
+            echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+            
             echo "Bắt đầu deploy..."
-            # Lấy lại tên image chữ thường trong môi trường server
+            
+            # Lấy tên image (đã được truyền qua envs, không cần tính toán lại phức tạp)
+            # Hoặc dùng lại logic cũ nếu muốn chắc chắn
             IMAGE_LOWER="ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')"
             
             # Dừng container cũ
             docker stop chatapp || true
             docker rm chatapp || true
             
-            # Pull image mới nhất về (cần image để Public hoặc login docker trên server)
+            # Pull image mới nhất về (Giờ đã có quyền pull nhờ docker login ở trên)
             docker pull $IMAGE_LOWER:latest
             
             # Chạy container mới
@@ -66,5 +71,12 @@ jobs:
               --restart unless-stopped \
               -p 3000:3000 \
               $IMAGE_LOWER:latest
-              
+            
             echo "Deploy thành công!"
+            
+            # (Tùy chọn) Logout để bảo mật
+            docker logout ghcr.io
+        # --- PHẦN THÊM MỚI 3: Gán giá trị cho các biến envs ---
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.MY_PAT }} # Dùng chính cái PAT bạn đã dùng ở bước login trên
