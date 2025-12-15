@@ -1,0 +1,52 @@
+name: Production Deploy
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Lấy source code về
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Đăng nhập vào Docker Hub
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{github.actor}}
+          password: ${{ secrets.MY_PAT }}
+
+      # 3. Đóng gói và đẩy Image lên Docker Hub
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: vanngt2004/chatweb:latest
+
+      # 4. SSH vào VPS để triển khai (Deploy)
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            # Tải image mới nhất về
+            sudo docker pull vanngt2004/chatweb:latest
+            
+            # Dừng và xóa container cũ (nếu đang chạy)
+            # "|| true" giúp lệnh không bị lỗi nếu đây là lần chạy đầu tiên
+            sudo docker stop chatweb || true
+            sudo docker rm chatweb || true
+            sudo docker run -d \
+              -p 3000:3000 \
+              --name chatweb \
+              --restart always \
+              vanngt2004/chatweb:latest
