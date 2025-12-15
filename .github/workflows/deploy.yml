@@ -47,7 +47,7 @@ jobs:
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ secrets.SSH_KEY }}
           script: |
             echo "Bắt đầu deploy..."
             # Lấy lại tên image chữ thường trong môi trường server
