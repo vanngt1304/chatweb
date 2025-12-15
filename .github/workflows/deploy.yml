@@ -3,52 +3,56 @@ name: Production Deploy
 on:
   push:
     branches: [ "main" ]
+
 permissions:
   contents: read
   packages: write
-  id-token: write
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       # 1. Lấy source code về
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Đăng nhập vào Docker Hub
-      
-      - name: Login to Docker Hub
+      # 2. Đăng nhập vào GitHub Container Registry (Dùng Token có sẵn)
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{github.actor}}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }} # <--- Đổi cái này cho chuẩn
 
-      # 3. Đóng gói và đẩy Image lên Docker Hub
+      # 3. Đóng gói và đẩy Image (QUAN TRỌNG: Phải có ghcr.io ở đầu)
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ghcr.io/vanngt2004/chatweb:latest
+          tags: ghcr.io/vanngt2004/chatweb:latest # <--- Đã sửa thêm ghcr.io/
 
-      # 4. SSH vào VPS để triển khai (Deploy)
+      # 4. SSH vào VPS để triển khai
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
+          key: ${{ secrets.SSH_KEY }} # Lưu ý: Kiểm tra lại tên biến này là SSH_KEY hay SSH_PRIVATE_KEY trong GitHub nhé
           script: |
-            # Tải image mới nhất về
+            # --- QUAN TRỌNG: Server cũng phải đăng nhập mới kéo được Image về ---
+            # (Nếu repo của bạn là Public thì bỏ dòng này được, nếu Private thì bắt buộc)
+            echo ${{ secrets.GITHUB_TOKEN }} | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Tải image mới nhất về (Đúng địa chỉ ghcr.io)
             sudo docker pull ghcr.io/vanngt2004/chatweb:latest
             
-            # Dừng và xóa container cũ (nếu đang chạy)
-            # "|| true" giúp lệnh không bị lỗi nếu đây là lần chạy đầu tiên
+            # Dừng và xóa container cũ
             sudo docker stop chatweb || true
             sudo docker rm chatweb || true
+            
+            # Chạy container mới
             sudo docker run -d \
               -p 3000:3000 \
               --name chatweb \
