@@ -51,7 +51,7 @@ jobs:
             IMAGE_LOWER="ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')"
             
             # Pull image mới nhất về (cần image để Public hoặc login docker trên server)
-            docker pull $IMAGE_LOWER:latest
+            sudo docker pull $IMAGE_LOWER:latest
             
             # Chạy container mới
             sudo docker run -d \
