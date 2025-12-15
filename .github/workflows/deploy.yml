@@ -3,6 +3,8 @@ name: Production Deploy
 on:
   push:
     branches: [ "main" ]
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
 permissions:
   contents: read
   packages: write
@@ -24,7 +26,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{github.actor}}
-          password: ${{ secrets.MY_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # 3. Đóng gói và đẩy Image lên Docker Hub
       - name: Build and push Docker image
